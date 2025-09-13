@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "https://github.com/X-code-interpreter/sandbox-backend/packages/shared/grpc/orchestrator";
+
+enum SandboxState {
+  UNSPECIFY = 0;
+  INVALID = 1;
+  RUNNING = 2;
+  STOP = 3;
+  CLEANNING = 4;
+  SNAPSHOTTING = 5;
+  ORPHAN = 6;
+}
+
+// Information returned by List() or Search()
+message SandboxInfo {
+  string sandboxID = 1;
+  optional string templateID = 2;
+  optional string kernelVersion = 3;
+  optional uint32 pid = 4;
+  // internal network index
+  optional int64 networkIdx = 5;
+  optional string privateIP = 6;
+  optional google.protobuf.Timestamp startTime = 7;
+  optional bool enableDiffSnapshots = 8;
+  SandboxState state = 9;
+  map<string, string> metadata = 10;
+}
+
+// ================= Create ================= //
+// Data required for creating a new sandbox.
+message SandboxCreateRequest {
+  string templateID = 1;
+  // Maximum length of the instance in Hours
+  int64 maxInstanceLength = 3;
+  string sandboxID = 4;
+  bool enableDiffSnapshots = 5;
+  map<string, string> metadata = 6;
+  optional string hypervisorBinaryPath = 7;
+}
+
+// Data about the sandbox.
+message SandboxCreateResponse { SandboxInfo info = 1; }
+
+// ================= List ================= //
+message SandboxListRequest {
+  // List only orphan sandbox (which not maintained by orchestrator currently)
+  // e.g., previous orchestrator has crashed and left some sandbox.
+  // These sandboxes will only contains the Sandbox and privateIP field.
+  bool orphan = 1;
+  // List only running sandboxes.
+  bool running = 2;
+}
+// Data returned after listing all the sandboxes.
+message SandboxListResponse { repeated SandboxInfo sandboxes = 1; }
+
+// ================= Delete ================= //
+message SandboxDeleteRequest { string sandboxID = 1; }
+
+// ================= Deactivate ================= //
+message SandboxDeactivateRequest { string sandboxID = 1; }
+
+// ================= Search ================= //
+message SandboxSearchRequest { string sandboxID = 1; }
+message SandboxSearchResponse { optional SandboxInfo sandbox = 1; }
+
+// ================= Snapshot ================= //
+message SandboxSnapshotRequest {
+  string sandboxID = 1;
+  // Whether to delete the sandbox after snapshotting.
+  bool delete = 2;
+}
+message SandboxSnapshotResponse {
+  // the path where contains the snapshot files.
+  string path = 1;
+}
+
+// ================= Purge ================= //
+// See note of rpc Purge below
+message SandboxPurgeRequest {
+  // purge all orphan sandboxes, when specify this option
+  // the sandboxIDs will be omitted.
+  bool purgeAll = 1;
+  repeated string SandboxIDs = 2;
+}
+
+// Interface exported by the server.
+service Sandbox {
+  // Create is a gRPC service that creates a new sandbox.
+  rpc Create(SandboxCreateRequest) returns (SandboxCreateResponse);
+  // List is a gRPC service that returns a list of all the sandboxes.
+  rpc List(SandboxListRequest) returns (SandboxListResponse);
+  // Delete is a gRPC service that kills a sandbox.
+  rpc Delete(SandboxDeleteRequest) returns (google.protobuf.Empty);
+  // Invoke memory reclaim for a sandbox **on host**.
+  rpc Deactive(SandboxDeactivateRequest) returns (google.protobuf.Empty);
+  // TODO(huang-jl): Active interface (which needs modification to FC)
+
+  // Snapshot a sandbox with id
+  rpc Snapshot(SandboxSnapshotRequest) returns (SandboxSnapshotResponse);
+  // search a sandbox with id
+  rpc Search(SandboxSearchRequest) returns (SandboxSearchResponse);
+  // Purge will be invoked in rare case. typically when orchestrator crashes
+  // and forget to cleanup the sandbox. So the client can call this method
+  // to purge the orphan sandbox manually
+  rpc Purge(SandboxPurgeRequest) returns (google.protobuf.Empty);
+}
+
+message HostManageCleanNetworkEnvRequest { repeated int64 NetworkIDs = 1; }
+
+service HostManage {
+  rpc RecreateCgroup(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc CleanNetworkEnv(HostManageCleanNetworkEnvRequest) returns (google.protobuf.Empty);
+}

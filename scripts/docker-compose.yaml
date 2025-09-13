@@ -1,0 +1,59 @@
+services:
+  # nginx
+  nginx:
+    image: nginx:1.27.0
+    restart: always
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    network_mode: "host"
+
+  # Jaeger
+  jaeger-all-in-one:
+    image: jaegertracing/all-in-one:latest
+    restart: always
+    ports:
+      - "16686:16686"
+      # - "14268"
+      # - "14250"
+
+  # Collector
+  otel-collector:
+    image: otel/opentelemetry-collector:0.102.1
+    restart: always
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      # - "1888:1888"   # pprof extension
+      # - "8888:8888"   # Prometheus metrics exposed by the collector
+      # - "8889:8889"   # Prometheus exporter metrics
+      # - "13133:13133" # health_check extension
+      # - "55679:55679" # zpages extension
+    depends_on:
+      - jaeger-all-in-one
+
+  grafana:
+    image: grafana/grafana-enterprise:10.4.4-ubuntu
+    restart: always
+    ports:
+      - "13000:3000"
+    environment:
+      # increases the log level from info to debug
+      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    restart: always
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+      # TODO: update this
+      - /mnt/pmem1/prometheus-targets:/prometheus/targets
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+volumes:
+  prometheus-data:
+    name: "ci-prometheus-data"
