@@ -101,13 +101,13 @@ function start_log_collecator() {
 }
 
 function prepare_kernel() {
-	if [ ! -e /var/lib/trenvx/kernels/fc-6.1.134/vmlinux ]; then
-		echo "do not find kernel at /var/lib/trenvx/kernels/fc-6.1.134, downloading..."
+	if [ ! -e /local/jotham/lib/trenvx/kernels/fc-6.1.134/vmlinux ]; then
+		echo "do not find kernel at /local/jotham/lib/trenvx/kernels/fc-6.1.134, downloading..."
 		wget -O vmlinux https://cloud.tsinghua.edu.cn/f/d917cedab44d446692b0/?dl=1
 		chmod +x vmlinux
-		sudo mkdir -p /var/lib/trenvx/kernels/fc-6.1.134
-		sudo chown -R $USER /var/lib/trenvx
-		mv vmlinux /var/lib/trenvx/kernels/fc-6.1.134/
+		sudo mkdir -p /local/jotham/lib/trenvx/kernels/fc-6.1.134
+		sudo chown -R $USER /local/jotham/lib/trenvx
+		mv vmlinux /local/jotham/lib/trenvx/kernels/fc-6.1.134/
 	fi
 }
 

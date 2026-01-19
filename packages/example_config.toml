@@ -3,7 +3,7 @@ fc_binary_path = ""
 # by default search cloud-hypervisor in $PATH
 ch_binary_path = ""
 # cannot be empty
-data_root = "/var/lib/trenvx"
+data_root = "/local/jotham/lib/trenvx"
 
 [orchestrator]
 # this can be omit
